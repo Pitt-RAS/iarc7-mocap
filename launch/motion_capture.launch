@@ -1,6 +1,6 @@
 <launch>
-	<arg name="image" default="camera/rgb/image_rect_color"/>
-	<arg name="depth_image" default="/camera/depth/image_rect"/>
+	<arg name="rgb_image" default="/camera/rgb/image_raw"/>
+	<arg name="depth_image" default="/camera/depth_registered/sw_registered/image_rect"/>
 	<arg name="camera_topic" default="/camera/rgb/camera_info"/>
 	<arg name="publish_tf" default="true"/>
 
@@ -8,6 +8,7 @@
   <node name="mocap_driver" pkg="iarc7_mocap" type="mocap_driver.py" output="screen">
 		<!-- If we wish to project into the world we need depth information. -->
   		<remap  from="depth_image" to="$(arg depth_image)"/>
+  		<remap  from="rgb_image" to="$(arg rgb_image)"/>
   		<!--  Camera topic is also necessary for our PinholeCameraModel.-->
   		<remap from="camera_topic" to="$(arg camera_topic)" />
   		<param name="publish_tf" value="$(arg publish_tf)"/>

@@ -14,7 +14,7 @@ class mocap():
 
         self.center = [0,0]
         #bounding box for Region of interest
-        self.roi = [0,0,0,0]
+        self.roi = [100,100,100,100]
 
         #bounding box for marker in depth map
         self.marker = [0,0,0,0]
@@ -28,6 +28,7 @@ class mocap():
 
         #create a background subtractor for this object
         self.fgbg = cv2.bgsegm.createBackgroundSubtractorMOG()
+        #self.fgbg = cv2.bgsegm.createBackgroundSubtractorCNT()
 
         #The frame we want our tf to have as a parent i.e. this is "/map"
         self.parent_frame = parent_frame
@@ -65,24 +66,27 @@ class mocap():
         it for the ROI.
         """
         #extracts foreground from overall image
-        fgmask = fgbg.apply(image)
+        fgmask = self.fgbg.apply(image)
 
         #perform opening and closing on image to clean it up
-        kernel = np.ones((5,5),np.uint8)
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(4,4))
         fgmask = cv2.morphologyEx(fgmask, cv2.MORPH_OPEN, kernel)
         fgmask = cv2.morphologyEx(fgmask, cv2.MORPH_CLOSE, kernel)
 
         #find contours in image
         img, contours, hierarchy = cv2.findContours(fgmask,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-        contours = contours[0]
-        self.roi = cv2.boundingRect(contours)
+        if contours:
+            c = max(contours, key = cv2.contourArea)
+            self.roi = cv2.boundingRect(c)
 
         img = image
         cv2.rectangle(img,(self.roi[0],self.roi[1]),(self.roi[0]+self.roi[2],self.roi[1]+self.roi[3]),(0,255,0),2)
 
 
-        cv2.imshow('image',img)
+        #cv2.imshow('image',img)
+        cv2.imshow('img',image)
         cv2.imshow('frame',fgmask)
+        k = cv2.waitKey(30) & 0xff
 
 
     def label_filter(self,depth_image):
@@ -92,12 +96,12 @@ class mocap():
         bounding box ratios (circles have a bb ratio of 1:1)
         """
         #select roi, we don't want to work on the whole image
-        depth_roi_image = self._get_roi(depth_image)
+        depth_roi_image = np.uint8(self._get_roi(depth_image))
 
         #clean up noise
         kernel = np.ones((5,5),np.uint8)
-        depth_roi_image = cv2.morphologyEx(depth_roi_image, cv2.MORPH_OPEN, kernel)
-        depth_roi_image = cv2.morphologyEx(depth_roi_image, cv2.MORPH_CLOSE, kernel)
+        #depth_roi_image = cv2.morphologyEx(depth_roi_image, cv2.MORPH_OPEN, kernel)
+        #depth_roi_image = cv2.morphologyEx(depth_roi_image, cv2.MORPH_CLOSE, kernel)
 
         #using 4 connectivity here
         connectivity = 4
@@ -113,10 +117,11 @@ class mocap():
         #extracts ROI from foreground
         #TODO write labelling code from fig 4
         #center of current label set to old
-        x,y = [math.inf,math.inf]
+        x,y = [float('inf'),float('inf')]
         #set default label to -1
+        cv2.imshow('D',depth_roi_image)
         sel_label = -1
-        for label in num_labels:
+        for label in range(0,num_labels):
             label_area = stats[label,4]
             if self.th1 < label_area and self.th2 > label_area:
                 lx,ly = centroids[label,0],centroids[label,1]
@@ -136,8 +141,13 @@ class mocap():
             #update marker location (rect) with new bounding box w.r.t full image
             self.marker = stats[sel_label,0:4]
             self.marker[0],self.marker[1] = self.marker[0] + self.roi[0],self.marker[1] + self.roi[1]
-        else:
+       # else:
+        print(self.center[0])
+        print(self.center[1])
+        transform = self._toTransform(self.center[0], self.center[1])
+        print(transform)
             #Don't update marker location
+       # return 0
 
 ##Private methods
 ##
@@ -182,8 +192,8 @@ class mocap():
         return (_x, _y, _z)
 
     def _get_roi(self,image):
-        return image[self.roi[0],self.roi[1]),(self.roi[0]+self.roi[2],self.roi[1]+self.roi[3]]
+        return image[self.roi[0]:(self.roi[0]+self.roi[2]),self.roi[1]:(self.roi[1]+self.roi[3])]
 
     def _getDepthAt(self, x,y):
-        return self.depth_image[y][x]/1000
+        return self.depth_image[int(y)][int(x)]/1000
 
