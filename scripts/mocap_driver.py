@@ -9,6 +9,7 @@ from image_geometry import PinholeCameraModel
 
 import cv_bridge import CvBridge
 import numpy as np
+from mocap import mocap
 
 
 class mocap_driver():
@@ -29,12 +30,19 @@ class mocap_driver():
 
         rospy.Subscriber("rgb_image",Image,self.image_callback)
 
+
         self.listener = tf.TransformListener()
         self.broadcaster = tf.TransformBroadcaster()
 
         self.publish_tf = publish_tf
 
-    def motion_callback(self, ):
+        self.mycap = mocap(self.camera_info,self.parent_frame,self.depth_image,self.cv_image,
+        self.cam_model,self.listener,self.broadcaster)
+
+        while(1):
+            self.mycap.extract_fg(self.mycap.rgb_image)
+            self.mycap.label_filter(self.mycap.depth_image)
+            self.mycap.publish()
 
     def image_callback(self, image):
         image_cv = self.bridge.imgmsg_to_cv2(image, image.encoding)
@@ -55,7 +63,7 @@ class mocap_driver():
 if __name__ = 'main':
     rospy.init_node('motion_capture')
 
-    publish_tf = rospy.get_param('motion_capture/publish_tf')
+    publish_tf = rospy.get_param('motion_capture/publish_tf',True)
     my_mocap = mocap_driver(publish_tf)
 
     rospy.spin()
