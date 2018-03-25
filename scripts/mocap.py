@@ -27,8 +27,8 @@ class mocap():
         self.th2 = 600
 
         #create a background subtractor for this object
-        self.fgbg = cv2.bgsegm.createBackgroundSubtractorMOG()
-        #self.fgbg = cv2.bgsegm.createBackgroundSubtractorCNT()
+        #self.fgbg = cv2.bgsegm.createBackgroundSubtractorMOG()
+        self.fgbg = cv2.bgsegm.createBackgroundSubtractorCNT()
 
         #The frame we want our tf to have as a parent i.e. this is "/map"
         self.parent_frame = parent_frame
@@ -57,8 +57,11 @@ class mocap():
 
         self.broadcaster.sendTransform(pos, rot, rospy.Time.now(), transform.child_frame_id, transform.header.frame_id)
 
+        print(transform)
         return transform
 
+    def validate(self):
+        return (self._validateDepthAt(self.center[0], self.center[1]))
 
     def extract_fg(self,image):
         """
@@ -119,7 +122,6 @@ class mocap():
         #center of current label set to old
         x,y = [float('inf'),float('inf')]
         #set default label to -1
-        cv2.imshow('D',depth_roi_image)
         sel_label = -1
         for label in range(0,num_labels):
             label_area = stats[label,4]
@@ -142,10 +144,6 @@ class mocap():
             self.marker = stats[sel_label,0:4]
             self.marker[0],self.marker[1] = self.marker[0] + self.roi[0],self.marker[1] + self.roi[1]
        # else:
-        print(self.center[0])
-        print(self.center[1])
-        transform = self._toTransform(self.center[0], self.center[1])
-        print(transform)
             #Don't update marker location
        # return 0
 
@@ -196,4 +194,11 @@ class mocap():
 
     def _getDepthAt(self, x,y):
         return self.depth_image[int(y)][int(x)]/1000
+
+    def _validateDepthAt(self, x, y):
+        depth = self._getDepthAt(x, y)
+        #print depth
+        if isnan(depth) or depth == 0:
+            return False
+        return True
 

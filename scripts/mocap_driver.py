@@ -22,14 +22,19 @@ class mocap_driver():
         rospy.Subscriber("camera_topic",CameraInfo,self.camera_callback)
         self.hasCameraInfo = False
 
-        while not self.hasCameraInfo:
+        while not self.hasCameraInfo and  not rospy.is_shutdown():
             print "waiting for camera info."
             rospy.sleep(0.5)
 
         rospy.Subscriber("depth_image",Image,self.depth_callback)
 
         rospy.Subscriber("rgb_image",Image,self.image_callback)
+        self.hasImage = False
+        self.hasDepth = False
 
+        while not self.hasImage and not self.hasDepth and not rospy.is_shutdown():
+            print "waiting for Image."
+            rospy.sleep(0.5)
 
         self.listener = tf.TransformListener()
         self.broadcaster = tf.TransformBroadcaster()
@@ -39,21 +44,24 @@ class mocap_driver():
         self.mycap = mocap(self.camera_info,self.parent_frame,self.depth_image,self.rgb_image,
         self.cam_model,self.listener,self.broadcaster)
 
-        while(1):
+        while(not rospy.is_shutdown()):
             self.mycap.extract_fg(self.rgb_image)
             self.mycap.label_filter(self.depth_image)
-            #self.mycap.publish()
+            if(self.mycap.validate()):
+                self.mycap.publish()
         cv2.destroyAllWindows()
 
     def image_callback(self, image):
         image_rgb = self.bridge.imgmsg_to_cv2(image, 'bgr8')
         self.rgb_image = image_rgb
+        self.hasImage = True
 
 
     def depth_callback(self, image):
         image_cv = self.bridge.imgmsg_to_cv2(image, image.encoding)
         image_cv2 = np.squeeze(np.array(image_cv, dtype=np.float32))
         self.depth_image = image_cv2
+        self.hasDepth = True
 
     def camera_callback(self, camera_info):
         if not self.hasCameraInfo:
