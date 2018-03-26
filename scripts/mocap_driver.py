@@ -45,9 +45,7 @@ class mocap_driver():
                 self.rgb_image,self.cam_model,self.listener,self.broadcaster)
 
         while(not rospy.is_shutdown()):
-            data_out = pc2.read_points(self.point_cloud2, field_names=None, skip_nans=False, uvs=[[100, 100]])
-            print(next(data_out))
-            #self.mycap.publish(self.rgb_image,self.point_cloud2)
+            self.mycap.publish(self.rgb_image,self.point_cloud2)
         cv2.destroyAllWindows()
 
     def image_callback(self, image):

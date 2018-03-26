@@ -58,12 +58,12 @@ class mocap():
 
         fgmask = self.extract_fg(self.rgb_image)
         self.label_circles(fgmask)
-        #self.label_filter(fgmask)
-        #if(self.validate()):
-        #     self.publish_callback()
+
+        if(self.validate()):
+             self.publish_tf()
 
     #publishes to our view
-    def publish_callback(self):
+    def publish_tf(self):
         transform = self._toTransform(self.center[0], self.center[1])
         pos = (transform.transform.translation.x, transform.transform.translation.y, transform.transform.translation.z)
         rot = (transform.transform.rotation.x, transform.transform.rotation.y, transform.transform.rotation.z, transform.transform.rotation.w)
@@ -135,7 +135,10 @@ class mocap():
         """
         output = self.rgb_image.copy()
         # get contours
-        img, contours, hierarchy = cv2.findContours(_get_roi(image), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        img, contours, hierarchy = cv2.findContours(image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+        try: hierarchy = hierarchy[0]
+        except: hierarchy = []
 
         contours_area = []
         # calculate area and filter into new array
@@ -152,15 +155,22 @@ class mocap():
             if perimeter == 0:
                 break
             circularity = 4*math.pi*(area/(perimeter*perimeter))
-            print circularity
+            #print circularity
             if 0.7 < circularity < 1.2:
                 contours_circles.append(con)
 
-        #largest circle in ROI is our marker
-        marker_circle = max(contours_circles, key = cv2.contourArea)
-        #self.roi = cv2.boundingRect(c)
+        if contours_circles:
+            #largest circle in ROI is our marker
+            marker_circle = max(contours_circles, key = cv2.contourArea)
+            self.marker = cv2.boundingRect(marker_circle)
+            M = cv2.moments(marker_circle)
+            cx = int(M['m10']/M['m00'])
+            cy = int(M['m01']/M['m00'])
+            #update center of marker
+            self.center = [cx,cy]
+            #self.roi = cv2.boundingRect(c)
 
-        cv2.drawContours(output,contours_circles,-1,(255,255,0),3)
+            cv2.drawContours(output,marker_circle,-1,(255,255,0),3)
         # show the output image
         cv2.imshow("output", np.hstack([self.rgb_image, output]))
         k = cv2.waitKey(30) & 0xff
@@ -202,21 +212,25 @@ class mocap():
 
     def _projectTo3d(self, x, y):
         [vx,vy,vz] = self.cam_model.projectPixelTo3dRay((x,y))
-        _z = self._getDepthAt(x,y)
-        _x = vx * _z
-        _y = vy * _z
+        point = self._getDepthAt(x,y)
+        _z = point[2]
+        _y = point[1]
+        _x = point[0]
+        #_z = self._getDepthAt(x,y)
+        #_x = vx * _z
+        #_y = vy * _z
         return (_x, _y, _z)
 
     def _get_roi(self,image):
         return image[self.roi[1]:(self.roi[1]+self.roi[3]),self.roi[0]:(self.roi[0]+self.roi[2])]
 
     def _getDepthAt(self, x,y):
-        return pc2.read_points(data, field_names=None, skip_nans=False, uvs=[x, y])
+        return next(pc2.read_points(self.point_cloud2, field_names=None, skip_nans=False, uvs=[[x, y]]))
 
     def _validateDepthAt(self, x, y):
         depth = self._getDepthAt(x, y)
         #print depth
-        if isnan(depth) or depth == 0:
+        if math.isnan(depth[2]) or depth[2] == 0:
             return False
         return True
 
