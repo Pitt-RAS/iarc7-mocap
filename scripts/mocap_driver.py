@@ -4,7 +4,8 @@ import rospy
 import roslib
 import tf
 
-from sensor_msgs.msg import Image, CameraInfo
+import sensor_msgs.point_cloud2 as pc2
+from sensor_msgs.msg import Image, CameraInfo, PointCloud2, PointField
 from image_geometry import PinholeCameraModel
 
 from cv_bridge import CvBridge
@@ -26,13 +27,12 @@ class mocap_driver():
             print "waiting for camera info."
             rospy.sleep(0.5)
 
-        rospy.Subscriber("depth_image",Image,self.depth_callback)
+        rospy.Subscriber("point_cloud2",PointCloud2,self.pc2_callback)
 
         rospy.Subscriber("rgb_image",Image,self.image_callback)
         self.hasImage = False
         self.hasDepth = False
-
-        while not self.hasImage and not self.hasDepth and not rospy.is_shutdown():
+        while ((not self.hasImage) or (not self.hasDepth)) and (not rospy.is_shutdown()):
             print "waiting for Image."
             rospy.sleep(0.5)
 
@@ -41,14 +41,13 @@ class mocap_driver():
 
         self.publish_tf = publish_tf
 
-        self.mycap = mocap(self.camera_info,self.parent_frame,self.depth_image,self.rgb_image,
-        self.cam_model,self.listener,self.broadcaster)
+        self.mycap = mocap(self.camera_info,self.parent_frame,self.point_cloud2,
+                self.rgb_image,self.cam_model,self.listener,self.broadcaster)
 
         while(not rospy.is_shutdown()):
-            self.mycap.extract_fg(self.rgb_image)
-            self.mycap.label_filter(self.depth_image)
-            if(self.mycap.validate()):
-                self.mycap.publish()
+            data_out = pc2.read_points(self.point_cloud2, field_names=None, skip_nans=False, uvs=[[100, 100]])
+            print(next(data_out))
+            #self.mycap.publish(self.rgb_image,self.point_cloud2)
         cv2.destroyAllWindows()
 
     def image_callback(self, image):
@@ -57,10 +56,8 @@ class mocap_driver():
         self.hasImage = True
 
 
-    def depth_callback(self, image):
-        image_cv = self.bridge.imgmsg_to_cv2(image, image.encoding)
-        image_cv2 = np.squeeze(np.array(image_cv, dtype=np.float32))
-        self.depth_image = image_cv2
+    def pc2_callback(self, point_cloud2):
+        self.point_cloud2 = point_cloud2
         self.hasDepth = True
 
     def camera_callback(self, camera_info):
