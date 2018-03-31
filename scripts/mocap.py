@@ -6,6 +6,7 @@ import sensor_msgs.point_cloud2 as pc2
 from image_geometry import PinholeCameraModel
 from geometry_msgs.msg import TransformStamped, PointStamped
 import cv2
+import datetime
 
 import numpy as np
 import math
@@ -52,7 +53,21 @@ class mocap():
         #Broadcaster to publish the transforms.
         self.broadcaster = broadcaster
 
+        #open logfile
+        #logname = "file"
+        #self.logfile = open(logname,'w')
+
     def publish(self,rgb_image,point_cloud2):
+        keypress = cv2.waitKey(1) & 0xFF
+        if keypress == 32:
+            #reset MOG
+            self.fgbg = cv2.createBackgroundSubtractorMOG2(1000,20,True)
+        elif keypress == ord('q'):
+            return 0
+            #self.logfile.close()
+            #logname = datetime.now().strftime('iarc7_mocap_%H_%M_%d_%m_%Y.log')
+            #self.logfile = open(logname,'w')
+
         self.point_cloud2 = point_cloud2
         self.rgb_image = rgb_image
 
@@ -207,6 +222,10 @@ class mocap():
             transform.transform.translation.x = point_transformed.point.x
             transform.transform.translation.y = point_transformed.point.y
             transform.transform.translation.z = point_transformed.point.z
+
+        #if(self.logfile):
+            #logstr = str([transform.transform.translation.x,transform.transform.translation.y,transform.transform.translation.z])+"\n"
+            #self.logfile.write(logstr)
 
         return transform
 

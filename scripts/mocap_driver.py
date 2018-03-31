@@ -45,7 +45,15 @@ class mocap_driver():
                 self.rgb_image,self.cam_model,self.listener,self.broadcaster)
 
         while(not rospy.is_shutdown()):
-            self.mycap.publish(self.rgb_image,self.point_cloud2)
+
+            keypress = cv2.waitKey(1) & 0xFF
+            if keypress == ord('r'):
+                self.mycap = mocap(self.camera_info,self.parent_frame,self.point_cloud2,
+                self.rgb_image,self.cam_model,self.listener,self.broadcaster)
+            else:
+
+                self.mycap.publish(self.rgb_image,self.point_cloud2)
+
         cv2.destroyAllWindows()
 
     def image_callback(self, image):
