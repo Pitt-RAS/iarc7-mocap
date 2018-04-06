@@ -1,4 +1,6 @@
 <launch>
+<include file="$(find freenect_launch)/launch/freenect.launch"/>
+
 <arg name="rgb_image" default="/camera/rgb/image_raw"/>
 
 <arg name="point_cloud2" default="/camera/depth_registered/points"/>
