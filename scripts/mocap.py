@@ -105,8 +105,10 @@ class mocap():
 
         #perform opening and closing on image to clean it up
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(10,10))
-        fgmask = cv2.morphologyEx(fgmask, cv2.MORPH_CLOSE, kernel)
         fgmask = cv2.morphologyEx(fgmask, cv2.MORPH_OPEN, kernel)
+        fgmask = cv2.morphologyEx(fgmask, cv2.MORPH_OPEN, kernel)
+        fgmask = cv2.morphologyEx(fgmask, cv2.MORPH_CLOSE, kernel)
+        fgmask = cv2.morphologyEx(fgmask, cv2.MORPH_CLOSE, kernel)
 
         #find contours in image
         img, contours, hierarchy = cv2.findContours(fgmask,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
@@ -123,7 +125,7 @@ class mocap():
                 min_y, max_y = min(y, min_y), max(y+h, max_y)
 
         img = image.copy()
-        cv2.rectangle(img, (min_x,min_y), (min_x+(max_x-min_x),min_y+(max_y-min_y)), (255, 0, 0), 2)
+        cv2.rectangle(img, (min_x,min_y), (min_x+(max_x-min_x),min_y+(max_y-min_y)), (255, 0, 0), 5)
         self.roi = [min_x,min_y,min_x+(max_x-min_x),min_y+(max_y-min_y)]
 
 
@@ -150,7 +152,7 @@ class mocap():
         """
         output = self.rgb_image.copy()
         # get contours
-        img, contours, hierarchy = cv2.findContours(image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        img, contours, hierarchy = cv2.findContours(image, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
 
         try: hierarchy = hierarchy[0]
         except: hierarchy = []
@@ -185,7 +187,8 @@ class mocap():
             self.center = [cx,cy]
             #self.roi = cv2.boundingRect(c)
 
-            cv2.drawContours(output,marker_circle,-1,(255,255,0),3)
+            cv2.drawContours(output,marker_circle,-1,(0,0,255),5)
+            #cv2.drawContours(output,contours_circles,-1,(0,0,255),5)
         # show the output image
         cv2.imshow("output", np.hstack([self.rgb_image, output]))
         k = cv2.waitKey(30) & 0xff
@@ -204,7 +207,11 @@ class mocap():
         transform.transform.translation.y = y
         transform.transform.translation.z = z
 
-        transform.transform.rotation.w = 1.0
+        quat = tf.transformations.quaternion_from_euler(math.pi/2, -math.pi/2, 0)
+        transform.transform.rotation.x = quat[0]
+        transform.transform.rotation.y = quat[1]
+        transform.transform.rotation.z = quat[2]
+        transform.transform.rotation.w = quat[3]
 
         #If our parent frame is not the camera frame then an additional transformation is required.
         if self.parent_frame != self.camera_frame:

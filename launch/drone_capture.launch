@@ -21,6 +21,12 @@
 
 <node name="marker_to_quad_static_pub" pkg="tf2_ros"
     type="static_transform_publisher"
+    args="0.0 0.0 0.0 0 0 0 /map /camera_frame" />
+
+<node name="marker_to_quad_static_pub" pkg="tf2_ros"
+    type="static_transform_publisher"
     args="0 0 -0.6096 0 0 0 /quad_marker /quad_prediction" />
+
+
 
 </launch>
