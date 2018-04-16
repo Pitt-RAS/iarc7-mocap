@@ -13,12 +13,22 @@
 <arg name="publish_tf" default="true"/>
 
 <node name="rgb_driver" pkg="iarc7_mocap" type="rgb_driver.py" output="screen">
-<!-- If we wish to project into the world we need depth information. -->
-<remap  from="point_cloud2" to="$(arg point_cloud2)"/>
-<remap  from="rgb_image" to="$(arg rgb_image)"/>
-<!--  Camera topic is also necessary for our PinholeCameraModel.-->
-<remap from="camera_topic" to="$(arg camera_topic)" />
-<param name="publish_tf" value="$(arg publish_tf)"/>
+
+    <param name="frontmarker" value="front_marker0"/>
+    <param name="backmarker" value="back_marker0"/>
+    <param name="leftmarker" value="left_marker0"/>
+    <param name="rightmarker" value="right_marker0"/>
+
+    <param name="marker" value="marker0"/>
+
+    <!-- If we wish to project into the world we need depth information. -->
+    <remap  from="point_cloud2" to="$(arg point_cloud2)"/>
+    <remap  from="rgb_image" to="$(arg rgb_image)"/>
+
+    <!--  Camera topic is also necessary for our PinholeCameraModel.-->
+    <remap from="camera_topic" to="$(arg camera_topic)" />
+    <param name="publish_tf" value="$(arg publish_tf)"/>
+
 </node>
 
 <node name="marker_to_quad_static_pub" pkg="tf2_ros"

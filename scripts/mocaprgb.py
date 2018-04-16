@@ -52,8 +52,15 @@ class mocap():
         #Broadcaster to publish the transforms.
         self.broadcaster = broadcaster
 
+        #start updating time
+        self.time = rospy.Time.now()
+
+        self.front_marker = rospy.get_param('~frontmarker')
+        self.back_marker = rospy.get_param('~backmarker')
+        self.left_marker = rospy.get_param('~leftmarker')
+        self.right_marker = rospy.get_param('~rightmarker')
         #marker and color pairings
-        self.marker_colors = {'front_marker':['RED',[0,0]],'back_marker':['GREEN',[0,0]],'left_marker':['YELLOW',[0,0]],'right_marker':['BLUE',[0,0]]}
+        self.marker_colors = {self.front_marker:['RED',[0,0]],self.back_marker:['GREEN',[0,0]],self.left_marker:['YELLOW',[0,0]],self.right_marker:['BLUE',[0,0]]}
 
         #open logfile
         #logname = "file"
@@ -77,10 +84,11 @@ class mocap():
         # Bitwise-AND fgmask and original image
         fgrgb = cv2.bitwise_and(self.rgb_image,self.rgb_image, mask= fgmask)
 
-        #cv2.imshow('frame',fgrgb)
-        #k = cv2.waitKey(30) & 0xff
+        cv2.imshow('frame',fgrgb)
+        k = cv2.waitKey(30) & 0xff
 
         #key = 'front_marker'
+        self.time = rospy.Time.now()
         for key in self.marker_colors:
             #segment image for color
             fgcolor = self.segment_rgb(fgrgb,self.marker_colors[key][0])
@@ -90,6 +98,7 @@ class mocap():
             #center = self.label_circles(fgcolor)
             if(self.marker_colors[key][1] and self.validate(self.marker_colors[key][1])):
                 self.publish_tf(key,self.marker_colors[key][1])
+        return self.time
 
     #publishes to our view
     def publish_tf(self,frame_id,center):
@@ -97,7 +106,7 @@ class mocap():
         pos = (transform.transform.translation.x, transform.transform.translation.y, transform.transform.translation.z)
         rot = (transform.transform.rotation.x, transform.transform.rotation.y, transform.transform.rotation.z, transform.transform.rotation.w)
 
-        self.broadcaster.sendTransform(pos, rot, rospy.Time.now(), transform.child_frame_id, transform.header.frame_id)
+        self.broadcaster.sendTransform(pos, rot,self.time, transform.child_frame_id, transform.header.frame_id)
 
         print(transform)
         return transform
@@ -256,7 +265,7 @@ class mocap():
     #Takes our data and makes a tf2 transform message.
     def _toTransform(self, my_x, my_y,frame_id):
         transform = TransformStamped()
-        transform.header.stamp = rospy.Time.now()
+        transform.header.stamp = self.time
         transform.header.frame_id = self.camera_frame
         transform.child_frame_id = frame_id
 
@@ -275,7 +284,7 @@ class mocap():
         if self.parent_frame != self.camera_frame:
             point = PointStamped()
             point.header.frame_id = self.camera_frame
-            point.header.stamp = rospy.Time(0)
+            point.header.stamp = self.time
             point.point.x = transform.transform.translation.x
             point.point.y = transform.transform.translation.y
             point.point.z = transform.transform.translation.z
@@ -283,14 +292,10 @@ class mocap():
             #Now we've gone from the regular camera frame to the correct parent_frame.
             point_transformed = self.listener.transformPoint(self.parent_frame, point)
 
-            transform.header.frame_id = self.parent_frame
+            transform.header.frame_id = self.pxarent_frame
             transform.transform.translation.x = point_transformed.point.x
             transform.transform.translation.y = point_transformed.point.y
             transform.transform.translation.z = point_transformed.point.z
-
-        #if(self.logfile):
-            #logstr = str([transform.transform.translation.x,transform.transform.translation.y,transform.transform.translation.z])+"\n"
-            #self.logfile.write(logstr)
 
         return transform
 

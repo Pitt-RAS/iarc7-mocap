@@ -1,5 +1,7 @@
 <launch>
+<!--
 <include file="$(find freenect_launch)/launch/freenect.launch"/>
+-->
 
 <arg name="rgb_image" default="/camera/rgb/image_raw"/>
 
@@ -18,6 +20,10 @@
 <remap from="camera_topic" to="$(arg camera_topic)" />
 <param name="publish_tf" value="$(arg publish_tf)"/>
 </node>
+
+<node name="map_to_camera_link" pkg="tf2_ros"
+    type="static_transform_publisher"
+    args="-2.05 0 .82 0 0 0 /map /camera_link" />
 
 <node name="marker_to_quad_static_pub" pkg="tf2_ros"
     type="static_transform_publisher"

@@ -5,7 +5,9 @@ import tf
 import sensor_msgs.point_cloud2 as pc2
 from image_geometry import PinholeCameraModel
 from geometry_msgs.msg import TransformStamped, PointStamped
+from sensor_msgs.msg import Image
 import cv2
+from cv_bridge import CvBridge
 import datetime
 
 import numpy as np
@@ -15,6 +17,8 @@ class mocap():
     def __init__(self, camera_info, parent_frame, point_cloud2, rgb_image,
             cam_model, listener, broadcaster):
 
+        self.bridge = CvBridge()
+        self.image_pub = rospy.Publisher("ball_image",Image)
         #bounding box for Region of interest
         self.roi = [100,100,100,100]
 
@@ -192,6 +196,7 @@ class mocap():
         # show the output image
         cv2.imshow("output", np.hstack([self.rgb_image, output]))
         k = cv2.waitKey(30) & 0xff
+        self.image_pub.publish(self.bridge.cv2_to_imgmsg(output, "bgr8"))
 
 ##Private methods
 ##

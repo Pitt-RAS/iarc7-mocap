@@ -39,13 +39,23 @@ class mocap_driver():
         self.listener = tf.TransformListener()
         self.broadcaster = tf.TransformBroadcaster()
 
+        self.time = rospy.Time.now()
+
         self.publish_tf = publish_tf
 
         self.mycap = mocap(self.camera_info,self.parent_frame,self.point_cloud2,
                 self.rgb_image,self.cam_model,self.listener,self.broadcaster)
 
+
+        self.marker_array =[
+        rospy.get_param('~frontmarker'),
+        rospy.get_param('~rightmarker'),
+        rospy.get_param('~backmarker'),
+        rospy.get_param('~leftmarker')]
+
         while(not rospy.is_shutdown()):
-            self.mycap.publish(self.rgb_image,self.point_cloud2)
+            self.time = self.mycap.publish(self.rgb_image,self.point_cloud2)
+            self.markers_to_tf(self.time)
 
         cv2.destroyAllWindows()
 
@@ -65,6 +75,30 @@ class mocap_driver():
             self.camera_info = camera_info
             self.parent_frame = self.camera_info.header.frame_id
         self.hasCameraInfo = True
+
+    def markers_to_tf(self,time):
+        markers = []
+        trans = []
+        rot = []
+        for marker in self.marker_array:
+            try :
+                (translation,rotation) = self.listener.lookupTransform(marker, self.parent_frame, time)
+                markers.append(marker)
+                trans.append(np.array(translation))
+                rot.append(np.array(rotation))
+            except (tf.LookupException, tf.ConnectivityException,tf.ExtrapolationException):
+                continue
+        if len(trans) > 2 and len(rot) > 2:
+            if len(trans) == 4 and len(rot) == 4:
+                l1 = trans[0]-trans[2]
+                l2 = trans[1]-trans[3]
+                mp0 = (trans[0] + trans[1])/2.0
+                mp1 = (trans[2] + trans[3])/2.0
+                midpoint = (mp1 + mp0)/2.0
+            elif len(trans) == 3 and len(rot) == 3:
+                l1 = trans[0]-trans[1]
+                l2 = trans[0]-trans[2]
+            n = np.cross(l1,l2)
 
 
 if __name__ == '__main__':
